@@ -261,7 +261,7 @@
 
                 <!-- ガイド表示 -->
                 <div class="absolute bottom-3 left-3 bg-white/85 dark:bg-slate-850/85 backdrop-blur px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-800 text-[10px] text-slate-500 pointer-events-none flex items-center space-x-1 shadow-sm">
-                    <i data-lucide="move" class="w-3 h-3"></i>
+                    <i data-lucide="move" class="w-3.5 h-3.5"></i>
                     <span>ドラッグして移動 / ホイールで拡大縮小</span>
                 </div>
             </div>
@@ -436,7 +436,7 @@ EL --> F1`;
                     gantt: { useMaxWidth: false }
                 });
 
-                // 【修正：最重要】新規立ち上げ・ロード時は常に空文字でスタートする
+                // 新規立ち上げ・ロード時は常に空文字でスタートする
                 editor.value = '';
 
                 updateLineNumbers();
@@ -790,6 +790,7 @@ EL --> F1`;
             });
         }
 
+        // トランスフォーム反映
         function applyTransform() {
             previewContainer.style.transform = `translate(${panX}px, ${panY}px) scale(${currentZoom})`;
             document.getElementById('zoom-level').textContent = `${Math.round(currentZoom * 100)}%`;
@@ -974,7 +975,7 @@ EL --> F1`;
             }
         }
 
-        // PNG エクスポート処理 (2倍スケール高画質出力)
+        // PNG エクスポート処理 (2倍スケール高画質出力、セキュリティ汚染対策済)
         function exportPNG() {
             const svgElement = previewContainer.querySelector('svg');
             if (!svgElement) {
@@ -999,10 +1000,19 @@ EL --> F1`;
                 clone.style.height = canvasHeight + 'px';
 
                 const serializer = new XMLSerializer();
-                const svgString = serializer.serializeToString(clone);
+                let svgString = serializer.serializeToString(clone);
                 
-                const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-                const url = URL.createObjectURL(blob);
+                // 【セキュリティ汚染対策①】
+                // SVG内のスタイル定義で、外部のWebフォントなどをロードしている定義（@import や @font-face）を完全に除去
+                // これによりCanvasの画像レンダリング時に別ドメインへの非同期リクエストが発生しなくなり、キャンバスの汚染（Tainted）を防ぎます。
+                svgString = svgString.replace(/@import\s+url\([^)]+\);?/g, '');
+                svgString = svgString.replace(/@font-face\s*{[^}]+}/g, '');
+
+                // 【セキュリティ汚染対策②】
+                // Blob URLの代わりにBase64エンコードされたData URLを使用することで、
+                // iframe内やサードパーティコンテキスト特有の同一オリジン例外（SecurityError）を完全に回避します。
+                const base64Svg = btoa(unescape(encodeURIComponent(svgString)));
+                const url = 'data:image/svg+xml;base64,' + base64Svg;
                 
                 const img = new Image();
                 img.onload = () => {
@@ -1029,14 +1039,13 @@ EL --> F1`;
                         showToast("PNGファイルをダウンロードしたよ！");
                     } catch (canvasErr) {
                         console.error(canvasErr);
-                        showToast("セキュアな環境制限のためPNG出力に失敗しました。");
+                        showToast("セキュア環境の制限によりPNG出力に失敗しました。");
                     }
-                    URL.revokeObjectURL(url);
                 };
                 
-                img.onerror = () => {
+                img.onerror = (e) => {
+                    console.error("Image loading failed in exportPNG", e);
                     showToast("画像の生成プロセスでエラーが発生しました。");
-                    URL.revokeObjectURL(url);
                 };
 
                 img.src = url;
