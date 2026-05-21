@@ -86,7 +86,7 @@
                     </button>
                     <!-- ドロップダウンメニュー -->
                     <div id="template-menu" class="hidden absolute right-0 mt-2 w-56 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl z-50 py-1 font-sans text-sm animate-in fade-in slide-in-from-top-2 duration-150">
-                        <button onclick="loadTemplate('flowchart')" class="w-full text-left px-4 py-2 hover:bg-brand-50 dark:hover:bg-brand-950/30 hover:text-brand-600 dark:hover:text-brand-400 flex items-center space-x-2">
+                        <button onclick="loadTemplate('flowchart')" class="w-full text-left px-4 py-2 hover:bg-brand-50 dark:hover:bg-brand-950/30 hover:text-brand-600 dark:hover:text-brand-400 flex items-center space-x-2 border-b border-slate-100 dark:border-slate-700/50 pb-1.5 mb-1.5">
                             <i data-lucide="git-fork" class="w-4 h-4"></i>
                             <span>フローチャート（業務プロセス）</span>
                         </button>
@@ -102,9 +102,14 @@
                             <i data-lucide="calendar" class="w-4 h-4"></i>
                             <span>ガントチャート（工程管理）</span>
                         </button>
-                        <button onclick="loadTemplate('mindmap')" class="w-full text-left px-4 py-2 hover:bg-brand-50 dark:hover:bg-brand-950/30 hover:text-brand-600 dark:hover:text-brand-400 flex items-center space-x-2">
+                        <button onclick="loadTemplate('mindmap')" class="w-full text-left px-4 py-2 hover:bg-brand-50 dark:hover:bg-brand-950/30 hover:text-brand-600 dark:hover:text-brand-400 flex items-center space-x-2 border-b border-slate-100 dark:border-slate-700/50 pb-1.5 mb-1.5">
                             <i data-lucide="network" class="w-4 h-4"></i>
                             <span>マインドマップ</span>
+                        </button>
+                        <!-- Markdown Table テンプレートを新規追加 -->
+                        <button onclick="loadTemplate('markdownTable')" class="w-full text-left px-4 py-2 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 text-brand-600 dark:text-brand-400 font-medium flex items-center space-x-2">
+                            <i data-lucide="table" class="w-4 h-4"></i>
+                            <span>Markdownテーブル（表）</span>
                         </button>
                     </div>
                 </div>
@@ -128,8 +133,8 @@
                 <!-- エディタヘッダー -->
                 <div class="px-4 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                     <div class="flex items-center space-x-2">
-                        <span class="flex h-2.5 w-2.5 rounded-full bg-brand-500"></span>
-                        <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300">Mermaid Editor</h2>
+                        <span id="editor-indicator-color" class="flex h-2.5 w-2.5 rounded-full bg-brand-500"></span>
+                        <h2 id="editor-title-text" class="text-sm font-semibold text-slate-700 dark:text-slate-300">Mermaid Editor</h2>
                     </div>
                     <div class="flex items-center space-x-1">
                         <button onclick="copyToClipboard()" class="p-1.5 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 rounded transition" title="コードをコピー">
@@ -148,7 +153,7 @@
                         <!-- JavaScriptで動的生成 -->
                     </div>
                     <!-- テキストエリア -->
-                    <textarea id="editor" class="flex-1 p-4 pl-3 resize-none outline-none text-sm leading-6 bg-transparent text-slate-300 whitespace-pre overflow-auto focus:ring-0" spellcheck="false" placeholder="ここにMermaidコードを入力してください..."></textarea>
+                    <textarea id="editor" class="flex-1 p-4 pl-3 resize-none outline-none text-sm leading-6 bg-transparent text-slate-300 whitespace-pre overflow-auto focus:ring-0" spellcheck="false" placeholder="ここにMermaidコード、または「| 項目 | 状況 |」などのMarkdownテーブルを入力してください..."></textarea>
                 </div>
 
                 <!-- ステータスバー -->
@@ -170,12 +175,12 @@
                     </h3>
                     <div class="flex items-center gap-2">
                         <!-- インポート用の非表示 input -->
-                        <input type="file" id="import-file" class="hidden" accept=".mermaid,.txt" onchange="importMermaidFile(event)">
+                        <input type="file" id="import-file" class="hidden" accept=".mermaid,.txt,.md" onchange="importMermaidFile(event)">
                         <button onclick="document.getElementById('import-file').click()" class="text-xs text-slate-500 hover:text-brand-500 flex items-center gap-1 transition" title="ファイルを読み込む">
                             <i data-lucide="file-up" class="w-3.5 h-3.5"></i>
                             <span>インポート</span>
                         </button>
-                        <button onclick="exportMermaidFile()" class="text-xs text-slate-500 hover:text-brand-500 flex items-center gap-1 transition" title="Mermaidコードをローカルファイルに保存する">
+                        <button onclick="exportMermaidFile()" class="text-xs text-slate-500 hover:text-brand-500 flex items-center gap-1 transition" title="現在のコードをローカルファイルに保存する">
                             <i data-lucide="file-down" class="w-3.5 h-3.5"></i>
                             <span>ファイル保存</span>
                         </button>
@@ -183,7 +188,7 @@
                 </div>
 
                 <div class="flex gap-2">
-                    <input type="text" id="save-name-input" placeholder="保存する図表の名前を入力..." class="flex-1 px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-500">
+                    <input type="text" id="save-name-input" placeholder="保存する名前を入力..." class="flex-1 px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-500">
                     <button onclick="saveToMyList()" class="px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition shrink-0 shadow-sm shadow-brand-500/10">
                         <i data-lucide="save" class="w-3.5 h-3.5"></i>
                         <span>リストに新規保存</span>
@@ -239,7 +244,7 @@
                 
                 <!-- ドラッグ＆ズームが反映されるコンテナ -->
                 <div id="preview-container" class="relative transition-transform duration-75 ease-out select-none flex items-center justify-center origin-center">
-                    <!-- ここにMermaidのSVGが描画されます -->
+                    <!-- ここにMermaid、またはMarkdown TableのSVGが描画されます -->
                 </div>
 
                 <!-- エラー表示オーバーレイ -->
@@ -261,7 +266,7 @@
 
                 <!-- ガイド表示 -->
                 <div class="absolute bottom-3 left-3 bg-white/85 dark:bg-slate-850/85 backdrop-blur px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-800 text-[10px] text-slate-500 pointer-events-none flex items-center space-x-1 shadow-sm">
-                    <i data-lucide="move" class="w-3.5 h-3.5"></i>
+                    <i data-lucide="move" class="w-3 h-3"></i>
                     <span>ドラッグして移動 / ホイールで拡大縮小</span>
                 </div>
             </div>
@@ -324,6 +329,14 @@ end
 
 %% コスト削減から広域DXへの接続
 EL --> F1`;
+
+        // Markdown Table のテンプレートを新設
+        const defaultMarkdownTable = `| 施策名 | 担当府省 | 推進ステータス | 概算予算 (R8年度) |
+| :--- | :---: | :---: | ---: |
+| ガバメントクラウド移行 | デジタル庁 | 進行中 (順調) | 2,400 億円 |
+| 自治体システム標準化支援 | 総務省 / デジ庁 | 計画策定完了 | 850 億円 |
+| マイナンバーカード機能拡充 | 総務省 | テスト運用中 | 120 億円 |
+| 全国データ連携基盤の整備 | 国土交通省 | 要件定義中 | 45 億円 |`;
 
         // テンプレート定義
         const templates = {
@@ -401,7 +414,8 @@ EL --> F1`;
     データ連携
       エリアデータ連携
       オープンデータ
-      セキュリティ強靭化`
+      セキュリティ強靭化`,
+            markdownTable: defaultMarkdownTable // 新規割り当て
         };
 
         // アプリケーション状態
@@ -549,16 +563,237 @@ EL --> F1`;
             document.getElementById('editor-stats').textContent = `行: ${lines} | 文字数: ${chars}`;
         }
 
+        // 入力されたコードがMarkdownテーブル形式か判別するヘルパー
+        function isMarkdownTable(code) {
+            const trimmed = code.trim();
+            if (!trimmed) return false;
+            
+            // 行に分割して最初の非空行を取得
+            const lines = trimmed.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            if (lines.length === 0) return false;
+            
+            // 最初行が | で始まっているか
+            return lines[0].startsWith('|');
+        }
+
+        // 全角・半角を考慮した正確な文字表示幅の計算（全角=2, 半角=1）
+        function getVisualLength(str) {
+            let len = 0;
+            for (let i = 0; i < str.length; i++) {
+                const code = str.charCodeAt(i);
+                if ((code >= 0x00 && code < 0x81) || code === 0xf8f0 || (code >= 0xff61 && code < 0xffa0)) {
+                    len += 1;
+                } else {
+                    len += 2;
+                }
+            }
+            return len;
+        }
+
+        // Markdown Tableを解析して美しいSVGとしてレンダリングする独自エンジン
+        function renderMarkdownTable(code) {
+            const lines = code.trim().split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            
+            // ヘッダーとデータ行のパース
+            let rawHeaders = [];
+            let rawRows = [];
+            let alignments = []; // left, center, right
+
+            // 各セルの区切りをパースするヘルパー
+            function parseCells(line) {
+                // 先頭と末尾の | を削って分割
+                let val = line;
+                if (val.startsWith('|')) val = val.slice(1);
+                if (val.endsWith('|')) val = val.slice(0, -1);
+                return val.split('|').map(s => s.trim());
+            }
+
+            if (lines.length > 0) {
+                rawHeaders = parseCells(lines[0]);
+            }
+
+            // 2行目がセパレーター行「|:---|:---:|---:|」かチェック
+            let startIndex = 1;
+            if (lines.length > 1 && lines[1].includes('-')) {
+                const sepCells = parseCells(lines[1]);
+                alignments = sepCells.map(cell => {
+                    const left = cell.startsWith(':');
+                    const right = cell.endsWith(':');
+                    if (left && right) return 'center';
+                    if (right) return 'right';
+                    return 'left'; // デフォルトは左寄せ
+                });
+                startIndex = 2; // データ行は3行目から
+            } else {
+                // セパレーター行がない場合はすべて左寄せ
+                alignments = new Array(rawHeaders.length).fill('left');
+            }
+
+            // データ行の蓄積
+            for (let i = startIndex; i < lines.length; i++) {
+                const cells = parseCells(lines[i]);
+                // 列数をヘッダーと合わせる
+                while (cells.length < rawHeaders.length) cells.push('');
+                rawRows.push(cells.slice(0, rawHeaders.length));
+            }
+
+            // --- 各列の最大幅を算出 ---
+            const colWidths = new Array(rawHeaders.length).fill(0);
+            for (let col = 0; col < rawHeaders.length; col++) {
+                let maxLen = getVisualLength(rawHeaders[col]);
+                for (let row = 0; row < rawRows.length; row++) {
+                    const len = getVisualLength(rawRows[row][col]);
+                    if (len > maxLen) maxLen = len;
+                }
+                // 表示幅に応じたピクセル幅（1文字あたり平均約8px、左右パディングに余裕を確保）
+                colWidths[col] = Math.max(maxLen * 8.5 + 36, 110);
+            }
+
+            const totalWidth = colWidths.reduce((a, b) => a + b, 0);
+            const headerHeight = 54;
+            const rowHeight = 48;
+            const totalHeight = headerHeight + (rawRows.length * rowHeight);
+
+            // ダークモード判定でテーブルカラーを最適化
+            const isDark = document.documentElement.classList.contains('dark');
+            const colorTheme = {
+                bg: isDark ? '#0f172a' : '#ffffff', // テーブル背景
+                headerBg: isDark ? '#1e1b4b' : '#f5f3ff', // ヘッダー背景
+                headerText: isDark ? '#c084fc' : '#5b21b6', // ヘッダー文字色
+                text: isDark ? '#cbd5e1' : '#1e293b', // 本文文字色
+                border: isDark ? '#334155' : '#e2e8f0', // 罫線
+                stripeBg: isDark ? '#1e293b/30' : '#f8fafc' // ストライプ行（偶数行）
+            };
+
+            // SVG生成開始
+            let svgString = `<svg viewBox="0 0 ${totalWidth} ${totalHeight}" width="${totalWidth}" height="${totalHeight}" xmlns="http://www.w3.org/2000/svg" style="font-family:'Noto Sans JP',sans-serif; background-color:${colorTheme.bg}; border-radius:12px; overflow:hidden; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">`;
+
+            // 全体背景の描画
+            svgString += `<rect width="100%" height="100%" fill="${colorTheme.bg}"/>`;
+
+            // ヘッダー背景
+            svgString += `<rect x="0" y="0" width="${totalWidth}" height="${headerHeight}" fill="${colorTheme.headerBg}"/>`;
+
+            // ヘッダーテキストの描画
+            let currentX = 0;
+            for (let col = 0; col < rawHeaders.length; col++) {
+                const w = colWidths[col];
+                const align = alignments[col];
+                let textX = currentX + 18; // leftパディング
+                let anchor = 'start';
+
+                if (align === 'center') {
+                    textX = currentX + (w / 2);
+                    anchor = 'middle';
+                } else if (align === 'right') {
+                    textX = currentX + w - 18;
+                    anchor = 'end';
+                }
+
+                svgString += `<text x="${textX}" y="${headerHeight / 2 + 5}" fill="${colorTheme.headerText}" font-size="14" font-weight="700" text-anchor="${anchor}">${rawHeaders[col]}</text>`;
+                
+                // 列区切り線（ヘッダー部分のみ）
+                if (col > 0) {
+                    svgString += `<line x1="${currentX}" y1="0" x2="${currentX}" y2="${headerHeight}" stroke="${colorTheme.border}" stroke-width="1"/>`;
+                }
+                currentX += w;
+            }
+
+            // ヘッダー下部境界線
+            svgString += `<line x1="0" y1="${headerHeight}" x2="${totalWidth}" y2="${headerHeight}" stroke="${colorTheme.border}" stroke-width="1.5"/>`;
+
+            // データ行の描画
+            for (let row = 0; row < rawRows.length; row++) {
+                const y = headerHeight + (row * rowHeight);
+
+                // 偶数行の背景色（ストライプ仕様）
+                if (row % 2 === 1) {
+                    const stripeFill = isDark ? '#1e293b' : '#f8fafc';
+                    svgString += `<rect x="0" y="${y}" width="${totalWidth}" height="${rowHeight}" fill="${stripeFill}"/>`;
+                }
+
+                currentX = 0;
+                for (let col = 0; col < rawHeaders.length; col++) {
+                    const w = colWidths[col];
+                    const align = alignments[col];
+                    const val = rawRows[row][col];
+                    let textX = currentX + 18;
+                    let anchor = 'start';
+
+                    if (align === 'center') {
+                        textX = currentX + (w / 2);
+                        anchor = 'middle';
+                    } else if (align === 'right') {
+                        textX = currentX + w - 18;
+                        anchor = 'end';
+                    }
+
+                    // セルテキストの描画
+                    svgString += `<text x="${textX}" y="${y + (rowHeight / 2) + 5}" fill="${colorTheme.text}" font-size="13" font-weight="500" text-anchor="${anchor}">${val}</text>`;
+
+                    // 列の垂直罫線
+                    if (col > 0) {
+                        svgString += `<line x1="${currentX}" y1="${y}" x2="${currentX}" y2="${y + rowHeight}" stroke="${colorTheme.border}" stroke-width="1"/>`;
+                    }
+                    currentX += w;
+                }
+
+                // 行の水平罫線
+                svgString += `<line x1="0" y1="${y + rowHeight}" x2="${totalWidth}" y2="${y + rowHeight}" stroke="${colorTheme.border}" stroke-width="1"/>`;
+            }
+
+            // テーブル外枠（上・左・右・下）を閉じる境界線
+            svgString += `<rect x="0" y="0" width="${totalWidth}" height="${totalHeight}" fill="none" stroke="${colorTheme.border}" stroke-width="1.5"/>`;
+            svgString += `</svg>`;
+
+            return svgString;
+        }
+
         // Mermaidレンダリングメイン処理
         async function renderDiagram(forceAutoFit = false) {
             const code = editor.value.trim();
             localStorage.setItem('mermaid_code', editor.value);
 
+            const titleText = document.getElementById('editor-title-text');
+            const indicator = document.getElementById('editor-indicator-color');
+
             if (!code) {
                 previewContainer.innerHTML = ''; // 何も描画しない
                 hideError();
+                titleText.textContent = "Editor";
+                indicator.className = "flex h-2.5 w-2.5 rounded-full bg-brand-500";
                 return;
             }
+
+            // Markdownテーブル記法の自動判定
+            if (isMarkdownTable(code)) {
+                titleText.textContent = "Markdown Table Editor";
+                indicator.className = "flex h-2.5 w-2.5 rounded-full bg-indigo-500"; // テーブル時はインディゴ色に
+                
+                try {
+                    // 自作の高速SVGテーブルレンダラーを起動
+                    const svgString = renderMarkdownTable(code);
+                    previewContainer.innerHTML = svgString;
+
+                    // 描画サイズアスペクト比の調整
+                    adjustSvgStyles();
+                    hideError();
+                    setRenderStatus(true);
+
+                    if (forceAutoFit) {
+                        setTimeout(fitDiagramToViewport, 50);
+                    }
+                } catch (tableErr) {
+                    console.error(tableErr);
+                    showError("Markdownテーブルの解析中にエラーが発生しました。");
+                    setRenderStatus(false);
+                }
+                return;
+            }
+
+            // 通常のMermaid処理
+            titleText.textContent = "Mermaid Editor";
+            indicator.className = "flex h-2.5 w-2.5 rounded-full bg-brand-500";
 
             if (typeof mermaid === 'undefined') return;
 
@@ -657,7 +892,7 @@ EL --> F1`;
 
             currentZoom = targetScale;
             
-            // 中央配置位置の計算 (panをリセット)
+            // 各種位置調整の初期化
             panX = 0;
             panY = 0;
 
@@ -902,7 +1137,7 @@ EL --> F1`;
         //  ファイル保存（エクスポート/インポート）
         // ==========================================
 
-        // .mermaid ファイルとしてローカル保存
+        // ファイルとしてローカル保存 (拡張子判別対応)
         function exportMermaidFile() {
             const code = editor.value;
             if (!code.trim()) {
@@ -910,11 +1145,14 @@ EL --> F1`;
                 return;
             }
 
+            const isTable = isMarkdownTable(code);
+            const extension = isTable ? 'md' : 'mermaid';
+
             const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `diagram-${Date.now()}.mermaid`;
+            link.download = `diagram-${Date.now()}.${extension}`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -922,7 +1160,7 @@ EL --> F1`;
             showToast("ファイルをローカルに保存したよ！");
         }
 
-        // 手元の .mermaid/.txt ファイルを読み込む
+        // 手元のファイルを読み込む
         function importMermaidFile(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -961,7 +1199,7 @@ EL --> F1`;
                     const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
                     rect.setAttribute("fill", "#FFFFFF");
                     
-                    // 【バグ修正】viewBox の正確な座標を解析して配置する
+                    // viewBox の正確な座標を解析して配置する
                     const viewBox = clone.getAttribute('viewBox');
                     if (viewBox) {
                         const parts = viewBox.split(/[ ,]+/);
@@ -991,7 +1229,7 @@ EL --> F1`;
                 
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = `mermaid-${Date.now()}.svg`;
+                link.download = `diagram-${Date.now()}.svg`;
                 document.body.appendChild(link);
                 link.click();
                 
@@ -1028,7 +1266,7 @@ EL --> F1`;
                 clone.style.width = canvasWidth + 'px';
                 clone.style.height = canvasHeight + 'px';
 
-                // 【バグ修正】PNG出力用のクローンSVG自体にも正確な座標で白背景を仕込み、
+                // PNG出力用のクローンSVG自体にも正確な座標で白背景を仕込み、
                 // Canvas描画時に隅に発生する余白・クリッピングの隙間を確実にカバー
                 if (!isTransparent) {
                     const bgRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
@@ -1055,14 +1293,12 @@ EL --> F1`;
                 const serializer = new XMLSerializer();
                 let svgString = serializer.serializeToString(clone);
                 
-                // 【セキュリティ汚染対策①】
-                // SVG内のスタイル定義で、外部のWebフォントなどをロードしている定義（@import や @font-face）を完全に除去
+                // 【セキュリティ汚染対策】
+                // SVG内のスタイル定義で、外部のWebフォントなどをロードしている定義を完全に除去
                 svgString = svgString.replace(/@import\s+url\([^)]+\);?/g, '');
                 svgString = svgString.replace(/@font-face\s*{[^}]+}/g, '');
 
-                // 【セキュリティ汚染対策②】
-                // Blob URLの代わりにBase64エンコードされたData URLを使用することで、
-                // iframe内やサードパーティコンテキスト特有の同一オリジン例外（SecurityError）を完全に回避します。
+                // Blob URLの代わりにBase64エンコードされたData URLを使用
                 const base64Svg = btoa(unescape(encodeURIComponent(svgString)));
                 const url = 'data:image/svg+xml;base64,' + base64Svg;
                 
@@ -1084,7 +1320,7 @@ EL --> F1`;
                         const pngDataUrl = canvas.toDataURL('image/png');
                         const link = document.createElement('a');
                         link.href = pngDataUrl;
-                        link.download = `mermaid-${Date.now()}.png`;
+                        link.download = `diagram-${Date.now()}.png`;
                         document.body.appendChild(link);
                         link.click();
                         document.body.removeChild(link);
