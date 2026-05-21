@@ -215,7 +215,7 @@
                     </div>
                 </div>
 
-                <!-- タブ2: GitHub保存・上書き (新設) -->
+                <!-- タブ2: GitHub保存・上書き -->
                 <div id="tab-github-content" class="hidden flex flex-col gap-3">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                         <!-- アクセストークン -->
@@ -387,11 +387,11 @@ end
 %% コスト削減から広域DXへの接続
 EL --> F1`;
 
-        // Markdown Table のテンプレート
-        const defaultMarkdownTable = `| 施策名 | 担当府省 | 推進ステータス | 概算予算 (R8年度) |
+        // Markdown Table のテンプレート (改行タグ <br> を含めて分かりやすくアップデート)
+        const defaultMarkdownTable = `| 施策名<br>(プロジェクト) | 担当府省 | 推進ステータス | 概算予算<br>(R8年度) |
 | :--- | :---: | :---: | ---: |
-| ガバメントクラウド移行 | デジタル庁 | 進行中 (順調) | 2,400 億円 |
-| 自治体システム標準化支援 | 総務省 / デジ庁 | 計画策定完了 | 850 億円 |
+| ガバメントクラウド移行<br>（基盤共通化） | デジタル庁 | 進行中<br>(順調に推移) | 2,400 億円 |
+| 自治体システム標準化支援<br>（全国標準スペック） | 総務省 / デジ庁 | 計画策定完了 | 850 億円 |
 | マイナンバーカード機能拡充 | 総務省 | テスト運用中 | 120 億円 |
 | 全国データ連携基盤の整備 | 国土交通省 | 要件定義中 | 45 億円 |`;
 
@@ -667,8 +667,15 @@ EL --> F1`;
                 return val.split('|').map(s => s.trim());
             }
 
+            // セル内の <br> 改行タグを解析して配列に分割する関数
+            function splitCellLines(cellText) {
+                // <br>, <br/>, <br >, <BR> など多様な改行表現に対応
+                return cellText.split(/<br\s*\/?>/gi).map(t => t.trim());
+            }
+
             if (lines.length > 0) {
-                rawHeaders = parseCells(lines[0]);
+                // ヘッダーセルも改行対応にする
+                rawHeaders = parseCells(lines[0]).map(splitCellLines);
             }
 
             // 2行目がセパレーター行
@@ -687,30 +694,62 @@ EL --> F1`;
                 alignments = new Array(rawHeaders.length).fill('left');
             }
 
-            // データ行の蓄積
+            // データ行の蓄積（セルごとに複数行配列にする）
             for (let i = startIndex; i < lines.length; i++) {
                 const cells = parseCells(lines[i]);
                 while (cells.length < rawHeaders.length) cells.push('');
-                rawRows.push(cells.slice(0, rawHeaders.length));
+                const rowCells = cells.slice(0, rawHeaders.length).map(splitCellLines);
+                rawRows.push(rowCells);
             }
 
-            // --- 各列の最大幅を算出 ---
+            // --- 各列の最大幅（colWidths）を算出 ---
             const colWidths = new Array(rawHeaders.length).fill(0);
             for (let col = 0; col < rawHeaders.length; col++) {
-                let maxLen = getVisualLength(rawHeaders[col]);
-                for (let row = 0; row < rawRows.length; row++) {
-                    const len = getVisualLength(rawRows[row][col]);
+                // ヘッダー内の各テキスト行で長さチェック
+                let maxLen = 0;
+                for (const headerLine of rawHeaders[col]) {
+                    const len = getVisualLength(headerLine);
                     if (len > maxLen) maxLen = len;
                 }
+                // データセル内の各テキスト行で長さチェック
+                for (let row = 0; row < rawRows.length; row++) {
+                    const cellLines = rawRows[row][col];
+                    for (const lineText of cellLines) {
+                        const len = getVisualLength(lineText);
+                        if (len > maxLen) maxLen = len;
+                    }
+                }
+                // 文字数に応じた幅計算（最低110px確保）
                 colWidths[col] = Math.max(maxLen * 8.5 + 36, 110);
             }
 
             const totalWidth = colWidths.reduce((a, b) => a + b, 0);
-            const headerHeight = 54;
-            const rowHeight = 48;
-            const totalHeight = headerHeight + (rawRows.length * rowHeight);
 
-            // ダークモード判定
+            // --- ヘッダー高さ・データ行高さの動的オートフィット計算 ---
+            const baseHeaderHeight = 36;
+            const baseRowHeight = 32;
+            const lineSpacing = 18; // 2行目以降のテキスト追加高さ
+
+            // ヘッダー内の最大行数を取得してヘッダー高さを決定
+            let maxHeaderLines = 1;
+            for (let col = 0; col < rawHeaders.length; col++) {
+                maxHeaderLines = Math.max(maxHeaderLines, rawHeaders[col].length);
+            }
+            const headerHeight = baseHeaderHeight + (maxHeaderLines * lineSpacing);
+
+            // 各データ行における最大行数を取得して、それぞれの高さを決定
+            const rowHeights = [];
+            for (let row = 0; row < rawRows.length; row++) {
+                let maxRowLines = 1;
+                for (let col = 0; col < rawHeaders.length; col++) {
+                    maxRowLines = Math.max(maxRowLines, rawRows[row][col].length);
+                }
+                rowHeights.push(baseRowHeight + (maxRowLines * lineSpacing));
+            }
+
+            const totalHeight = headerHeight + rowHeights.reduce((a, b) => a + b, 0);
+
+            // ダークモード・ライトモードのカラーテーマ
             const isDark = document.documentElement.classList.contains('dark');
             const colorTheme = {
                 bg: isDark ? '#0f172a' : '#ffffff',
@@ -725,42 +764,19 @@ EL --> F1`;
             svgString += `<rect width="100%" height="100%" fill="${colorTheme.bg}"/>`;
             svgString += `<rect x="0" y="0" width="${totalWidth}" height="${headerHeight}" fill="${colorTheme.headerBg}"/>`;
 
+            // --- ヘッダー行の描画 ---
             let currentX = 0;
             for (let col = 0; col < rawHeaders.length; col++) {
                 const w = colWidths[col];
                 const align = alignments[col];
-                let textX = currentX + 18;
-                let anchor = 'start';
+                const headerLines = rawHeaders[col];
+                
+                // 垂直方向中央寄せのためのy座標計算
+                const totalTextHeight = headerLines.length * 15 + (headerLines.length - 1) * 3;
+                let startTextY = (headerHeight - totalTextHeight) / 2 + 11;
 
-                if (align === 'center') {
-                    textX = currentX + (w / 2);
-                    anchor = 'middle';
-                } else if (align === 'right') {
-                    textX = currentX + w - 18;
-                    anchor = 'end';
-                }
-
-                svgString += `<text x="${textX}" y="${headerHeight / 2 + 5}" fill="${colorTheme.headerText}" font-size="14" font-weight="700" text-anchor="${anchor}">${rawHeaders[col]}</text>`;
-                if (col > 0) {
-                    svgString += `<line x1="${currentX}" y1="0" x2="${currentX}" y2="${headerHeight}" stroke="${colorTheme.border}" stroke-width="1"/>`;
-                }
-                currentX += w;
-            }
-
-            svgString += `<line x1="0" y1="${headerHeight}" x2="${totalWidth}" y2="${headerHeight}" stroke="${colorTheme.border}" stroke-width="1.5"/>`;
-
-            for (let row = 0; row < rawRows.length; row++) {
-                const y = headerHeight + (row * rowHeight);
-                if (row % 2 === 1) {
-                    const stripeFill = isDark ? '#1e293b' : '#f8fafc';
-                    svgString += `<rect x="0" y="${y}" width="${totalWidth}" height="${rowHeight}" fill="${stripeFill}"/>`;
-                }
-
-                currentX = 0;
-                for (let col = 0; col < rawHeaders.length; col++) {
-                    const w = colWidths[col];
-                    const align = alignments[col];
-                    const val = rawRows[row][col];
+                for (let lineIdx = 0; lineIdx < headerLines.length; lineIdx++) {
+                    const val = headerLines[lineIdx];
                     let textX = currentX + 18;
                     let anchor = 'start';
 
@@ -772,13 +788,67 @@ EL --> F1`;
                         anchor = 'end';
                     }
 
-                    svgString += `<text x="${textX}" y="${y + (rowHeight / 2) + 5}" fill="${colorTheme.text}" font-size="13" font-weight="500" text-anchor="${anchor}">${val}</text>`;
+                    const textY = startTextY + (lineIdx * 18);
+                    svgString += `<text x="${textX}" y="${textY}" fill="${colorTheme.headerText}" font-size="14" font-weight="700" text-anchor="${anchor}">${val}</text>`;
+                }
+                
+                // 列区切り線
+                if (col > 0) {
+                    svgString += `<line x1="${currentX}" y1="0" x2="${currentX}" y2="${headerHeight}" stroke="${colorTheme.border}" stroke-width="1"/>`;
+                }
+                currentX += w;
+            }
+
+            svgString += `<line x1="0" y1="${headerHeight}" x2="${totalWidth}" y2="${headerHeight}" stroke="${colorTheme.border}" stroke-width="1.5"/>`;
+
+            // --- データ行の描画 ---
+            let currentY = headerHeight;
+            for (let row = 0; row < rawRows.length; row++) {
+                const rHeight = rowHeights[row];
+                
+                // 偶数行の背景色（ストライプ仕様）
+                if (row % 2 === 1) {
+                    const stripeFill = isDark ? '#1e293b' : '#f8fafc';
+                    svgString += `<rect x="0" y="${currentY}" width="${totalWidth}" height="${rHeight}" fill="${stripeFill}"/>`;
+                }
+
+                currentX = 0;
+                for (let col = 0; col < rawHeaders.length; col++) {
+                    const w = colWidths[col];
+                    const align = alignments[col];
+                    const cellLines = rawRows[row][col];
+                    
+                    // 垂直方向中央寄せのためのy座標計算
+                    const totalTextHeight = cellLines.length * 14 + (cellLines.length - 1) * 4;
+                    let startTextY = currentY + (rHeight - totalTextHeight) / 2 + 10;
+
+                    for (let lineIdx = 0; lineIdx < cellLines.length; lineIdx++) {
+                        const val = cellLines[lineIdx];
+                        let textX = currentX + 18;
+                        let anchor = 'start';
+
+                        if (align === 'center') {
+                            textX = currentX + (w / 2);
+                            anchor = 'middle';
+                        } else if (align === 'right') {
+                            textX = currentX + w - 18;
+                            anchor = 'end';
+                        }
+
+                        const textY = startTextY + (lineIdx * 18);
+                        svgString += `<text x="${textX}" y="${textY}" fill="${colorTheme.text}" font-size="13" font-weight="500" text-anchor="${anchor}">${val}</text>`;
+                    }
+
+                    // 垂直罫線
                     if (col > 0) {
-                        svgString += `<line x1="${currentX}" y1="${y}" x2="${currentX}" y2="${y + rowHeight}" stroke="${colorTheme.border}" stroke-width="1"/>`;
+                        svgString += `<line x1="${currentX}" y1="${currentY}" x2="${currentX}" y2="${currentY + rHeight}" stroke="${colorTheme.border}" stroke-width="1"/>`;
                     }
                     currentX += w;
                 }
-                svgString += `<line x1="0" y1="${y + rowHeight}" x2="${totalWidth}" y2="${y + rowHeight}" stroke="${colorTheme.border}" stroke-width="1"/>`;
+
+                // 水平罫線
+                svgString += `<line x1="0" y1="${currentY + rHeight}" x2="${totalWidth}" y2="${currentY + rHeight}" stroke="${colorTheme.border}" stroke-width="1"/>`;
+                currentY += rHeight;
             }
 
             svgString += `<rect x="0" y="0" width="${totalWidth}" height="${totalHeight}" fill="none" stroke="${colorTheme.border}" stroke-width="1.5"/>`;
@@ -1138,7 +1208,7 @@ EL --> F1`;
         }
 
         // ==========================================
-        //  タブ切り替えUIロジック (新機能)
+        //  タブ切り替えUIロジック
         // ==========================================
         function switchTab(tabId) {
             const localBtn = document.getElementById('tab-local-btn');
@@ -1160,7 +1230,7 @@ EL --> F1`;
         }
 
         // ==========================================
-        //  GitHub保存・上書きロジック (新機能)
+        //  GitHub保存・上書きロジック
         // ==========================================
         function saveGitHubConfig() {
             const token = document.getElementById('gh-token').value.trim();
@@ -1212,25 +1282,20 @@ EL --> F1`;
                 return;
             }
 
-            // デフォルトのコミットメッセージ
             if (!message) {
                 message = "Update diagram via Mermaid Exporter";
             }
 
-            // ローカル保存
             saveGitHubConfig();
 
-            // UIをローディング状態にする
             const commitBtn = document.getElementById('gh-commit-btn');
             const btnText = document.getElementById('gh-btn-text');
             commitBtn.disabled = true;
             btnText.textContent = "接続中・コミット処理中...";
 
             try {
-                // UTF-8対応のBase64エンコード
                 const base64Content = btoa(unescape(encodeURIComponent(code)));
 
-                // 1. 既存ファイルが保存先にあるかGETしてチェック（上書きの場合はSHAが必要なため）
                 const checkUrl = `https://api.github.com/repos/${repo}/contents/${path}?ref=${branch}`;
                 const headers = {
                     "Authorization": `token ${token}`,
@@ -1242,23 +1307,20 @@ EL --> F1`;
                 const checkRes = await fetch(checkUrl, { headers });
 
                 if (checkRes.ok) {
-                    // すでにファイルが存在するので上書きのためにSHAを取得
                     const fileData = await checkRes.json();
                     fileSha = fileData.sha;
                 } else if (checkRes.status !== 404) {
-                    // 404（存在しない）以外のエラーが返ってきたら権限などの不具合
                     const errData = await checkRes.json();
                     throw new Error(errData.message || "リポジトリ情報の取得に失敗したよ。");
                 }
 
-                // 2. コミット実行（PUTメソッド）
                 const commitBody = {
                     message: message,
                     content: base64Content,
                     branch: branch
                 };
                 if (fileSha) {
-                    commitBody.sha = fileSha; // 上書き時に必須のSHAを付与
+                    commitBody.sha = fileSha;
                 }
 
                 const putUrl = `https://api.github.com/repos/${repo}/contents/${path}`;
@@ -1279,7 +1341,6 @@ EL --> F1`;
                 console.error(err);
                 showToast(`エラー: ${err.message}`);
             } finally {
-                // UI状態を元に戻す
                 commitBtn.disabled = false;
                 btnText.textContent = "GitHubに保存（新規/上書き）";
             }
