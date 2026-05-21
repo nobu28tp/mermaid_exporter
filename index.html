@@ -272,7 +272,7 @@
                 <div class="flex items-center space-x-4">
                     <label class="flex items-center space-x-2 text-xs font-medium text-slate-600 dark:text-slate-400 cursor-pointer">
                         <input type="checkbox" id="transparent-bg" class="rounded text-brand-500 focus:ring-brand-500 dark:bg-slate-800 dark:border-slate-700" checked>
-                        <span>PNG出力時に背景を透過にする</span>
+                        <span>画像出力（SVG/PNG）時に背景を透過にする</span>
                     </label>
                 </div>
 
@@ -344,7 +344,7 @@ EL --> F1`;
     deactivate DB
     
     alt 認証成功
-        API-->>App: アクセストークン (JWT)
+        API-->>App:アクセストークン (JWT)
         App-->>User: ホーム画面遷移
     else パスワード不一致
         API-->>App: 401 Unauthorized
@@ -941,7 +941,7 @@ EL --> F1`;
             event.target.value = '';
         }
 
-        // SVG エクスポート処理
+        // SVG エクスポート処理（背景の透過設定を適用可能にアップグレード）
         function exportSVG() {
             const svgElement = previewContainer.querySelector('svg');
             if (!svgElement) {
@@ -950,9 +950,22 @@ EL --> F1`;
             }
 
             try {
+                const isTransparent = document.getElementById('transparent-bg').checked;
                 const clone = svgElement.cloneNode(true);
-                clone.removeAttribute('style');
+                clone.removeAttribute('style'); // プレビュー用の拡縮スタイルを解除
                 clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                
+                // 背景を透過にしない（白背景にする）場合の処理
+                if (!isTransparent) {
+                    // SVG規格（XML名前空間）に基づいてrect要素（矩形）を新規生成
+                    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                    rect.setAttribute("width", "100%");
+                    rect.setAttribute("height", "100%");
+                    rect.setAttribute("fill", "#FFFFFF");
+                    
+                    // クローンしたSVGコードの最下層（一番最初の子要素）に滑り込ませて白背景を形成する
+                    clone.insertBefore(rect, clone.firstChild);
+                }
                 
                 const serializer = new XMLSerializer();
                 let svgString = serializer.serializeToString(clone);
