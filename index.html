@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="ja" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid Exporter - 高機能図表作成・出力ツール</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Mermaid.js -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+        }
+        .font-mono-code {
+            font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
+        }
+        /* スクロールバーのカスタマイズ */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="h-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 flex flex-col transition-colors duration-200">
+
+    <!-- ヘッダー -->
+    <header class="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-gradient-to-tr from-brand-500 to-indigo-500 rounded-xl text-white shadow-md shadow-brand-500/20">
+                    <i data-lucide="share-2" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-brand-600 to-indigo-600 dark:from-brand-400 dark:to-indigo-400 bg-clip-text text-transparent">
+                        Mermaid Exporter
+                    </h1>
+                    <p class="text-[10px] text-slate-500 dark:text-slate-400 hidden sm:block">シンプルで美しい、図表作成・画像出力システム</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <!-- テンプレート選択 -->
+                <div class="relative inline-block text-left">
+                    <button id="template-btn" class="flex items-center space-x-1 px-3.2 py-2 text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 bg-white dark:bg-slate-900 shadow-sm transition">
+                        <i data-lucide="layout" class="w-4 h-4 text-slate-500"></i>
+                        <span>テンプレート</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+                    </button>
+                    <!-- ドロップダウンメニュー -->
+                    <div id="template-menu" class="hidden absolute right-0 mt-2 w-56 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl z-50 py-1 font-sans text-sm animate-in fade-in slide-in-from-top-2 duration-150">
+                        <button onclick="loadTemplate('flowchart')" class="w-full text-left px-4 py-2 hover:bg-brand-50 dark:hover:bg-brand-950/30 hover:text-brand-600 dark:hover:text-brand-400 flex items-center space-x-2">
+                            <i data-lucide="git-fork" class="w-4 h-4"></i>
+                            <span>フローチャート（業務プロセス）</span>
+                        </button>
+                        <button onclick="loadTemplate('sequence')" class="w-full text-left px-4 py-2 hover:bg-brand-50 dark:hover:bg-brand-950/30 hover:text-brand-600 dark:hover:text-brand-400 flex items-center space-x-2">
+                            <i data-lucide="arrow-right-left" class="w-4 h-4"></i>
+                            <span>シーケンス図（API連携）</span>
+                        </button>
+                        <button onclick="loadTemplate('class')" class="w-full text-left px-4 py-2 hover:bg-brand-50 dark:hover:bg-brand-950/30 hover:text-brand-600 dark:hover:text-brand-400 flex items-center space-x-2">
+                            <i data-lucide="layers" class="w-4 h-4"></i>
+                            <span>クラス図（データ構造）</span>
+                        </button>
+                        <button onclick="loadTemplate('gantt')" class="w-full text-left px-4 py-2 hover:bg-brand-50 dark:hover:bg-brand-950/30 hover:text-brand-600 dark:hover:text-brand-400 flex items-center space-x-2">
+                            <i data-lucide="calendar" class="w-4 h-4"></i>
+                            <span>ガントチャート（工程管理）</span>
+                        </button>
+                        <button onclick="loadTemplate('mindmap')" class="w-full text-left px-4 py-2 hover:bg-brand-50 dark:hover:bg-brand-950/30 hover:text-brand-600 dark:hover:text-brand-400 flex items-center space-x-2">
+                            <i data-lucide="network" class="w-4 h-4"></i>
+                            <span>マインドマップ</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ダークモード切り替え -->
+                <button id="theme-toggle" class="p-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 shadow-sm transition" title="テーマ切り替え">
+                    <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+                    <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col lg:flex-row gap-6 overflow-hidden">
+        
+        <!-- 左半分: エディタ部 & 保存マネージャー -->
+        <section class="flex-1 flex flex-col min-w-0 gap-4 overflow-hidden min-h-[500px] lg:min-h-0">
+            <!-- エディタ本体カード -->
+            <div class="flex-1 flex flex-col bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <!-- エディタヘッダー -->
+                <div class="px-4 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <span class="flex h-2.5 w-2.5 rounded-full bg-brand-500"></span>
+                        <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300">Mermaid Editor</h2>
+                    </div>
+                    <div class="flex items-center space-x-1">
+                        <button onclick="copyToClipboard()" class="p-1.5 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 rounded transition" title="コードをコピー">
+                            <i data-lucide="copy" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="clearEditor()" class="p-1.5 text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 rounded transition" title="クリア">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- エディタ本体 -->
+                <div id="editor-container" class="flex-1 flex overflow-hidden font-mono-code relative bg-slate-950">
+                    <!-- 行番号 -->
+                    <div id="line-numbers" class="w-12 text-right pr-3 pt-4 select-none text-slate-600 bg-slate-950/80 border-r border-slate-900 text-xs leading-6 overflow-hidden">
+                        <!-- JavaScriptで動的生成 -->
+                    </div>
+                    <!-- テキストエリア -->
+                    <textarea id="editor" class="flex-1 p-4 pl-3 resize-none outline-none text-sm leading-6 bg-transparent text-slate-300 whitespace-pre overflow-auto focus:ring-0" spellcheck="false" placeholder="ここにMermaidコードを入力してください..."></textarea>
+                </div>
+
+                <!-- ステータスバー -->
+                <div class="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
+                    <div id="editor-stats">行: 1 | 文字数: 0</div>
+                    <div id="render-status" class="flex items-center space-x-1 text-emerald-500">
+                        <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+                        <span>正常</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- コード保存マネージャーカード -->
+            <div class="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                        <i data-lucide="folder-heart" class="w-4 h-4"></i>
+                        <span>図表マイリスト保存・管理</span>
+                    </h3>
+                    <div class="flex items-center gap-2">
+                        <!-- インポート用の非表示 input -->
+                        <input type="file" id="import-file" class="hidden" accept=".mermaid,.txt" onchange="importMermaidFile(event)">
+                        <button onclick="document.getElementById('import-file').click()" class="text-xs text-slate-500 hover:text-brand-500 flex items-center gap-1 transition" title="ファイルを読み込む">
+                            <i data-lucide="file-up" class="w-3.5 h-3.5"></i>
+                            <span>インポート</span>
+                        </button>
+                        <button onclick="exportMermaidFile()" class="text-xs text-slate-500 hover:text-brand-500 flex items-center gap-1 transition" title="Mermaidコードをローカルファイルに保存する">
+                            <i data-lucide="file-down" class="w-3.5 h-3.5"></i>
+                            <span>ファイル保存</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex gap-2">
+                    <input type="text" id="save-name-input" placeholder="保存する図表の名前を入力..." class="flex-1 px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-500">
+                    <button onclick="saveToMyList()" class="px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition shrink-0 shadow-sm shadow-brand-500/10">
+                        <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                        <span>リストに新規保存</span>
+                    </button>
+                </div>
+
+                <!-- 保存済みリストコンテナ -->
+                <div class="border-t border-slate-100 dark:border-slate-900 pt-2">
+                    <p class="text-[11px] text-slate-400 mb-2">保存済み図表一覧（ブラウザに記憶されます）</p>
+                    <div id="mylist-container" class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                        <!-- JSで動的にバッジを追加 -->
+                        <span class="text-xs text-slate-400 italic">保存された図表はまだありません</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 右半分: プレビュー & エクスポート -->
+        <section class="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <!-- プレビューヘッダー -->
+            <div class="px-4 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="eye" class="w-4 h-4 text-slate-500"></i>
+                    <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300">Preview</h2>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <!-- ズーム操作 -->
+                    <div class="flex items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-0.5 shadow-sm text-xs">
+                        <button onclick="adjustZoom(0.8)" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition" title="縮小">
+                            <i data-lucide="minus" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <span id="zoom-level" class="px-2 font-medium min-w-[40px] text-center">100%</span>
+                        <button onclick="adjustZoom(1.2)" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition" title="拡大">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button onclick="resetZoom()" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition border-l border-slate-200 dark:border-slate-700 ml-0.5" title="位置と拡大率を元に戻す">
+                            <i data-lucide="maximize" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+
+                    <!-- 手動更新 -->
+                    <button onclick="renderDiagram(true)" class="p-1.5 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 rounded transition" title="プレビューを再生成">
+                        <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- プレビュー描画領域 -->
+            <div id="preview-viewport" class="flex-1 relative bg-slate-100 dark:bg-slate-900/60 overflow-hidden cursor-grab active:cursor-grabbing flex items-center justify-center min-h-[350px]">
+                
+                <!-- グリッド背景装飾 -->
+                <div class="absolute inset-0 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] dark:bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none opacity-60"></div>
+                
+                <!-- ドラッグ＆ズームが反映されるコンテナ -->
+                <div id="preview-container" class="relative transition-transform duration-75 ease-out select-none flex items-center justify-center origin-center">
+                    <!-- ここにMermaidのSVGが描画されます -->
+                </div>
+
+                <!-- エラー表示オーバーレイ -->
+                <div id="error-overlay" class="hidden absolute inset-0 bg-red-950/10 backdrop-blur-sm flex items-center justify-center p-6">
+                    <div class="bg-white dark:bg-slate-900 border-l-4 border-red-500 p-4 rounded-r-xl shadow-xl max-w-md w-full animate-in fade-in zoom-in-95 duration-150">
+                        <div class="flex items-start space-x-3">
+                            <div class="p-1 bg-red-100 dark:bg-red-950 rounded-lg text-red-600 dark:text-red-400">
+                                <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-sm font-bold text-red-800 dark:text-red-400">文法エラーを検出しました</h3>
+                                <p id="error-message" class="mt-1 text-xs text-red-600 dark:text-red-300 font-mono-code break-words max-h-32 overflow-y-auto">
+                                    Syntax Error...
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ガイド表示 -->
+                <div class="absolute bottom-3 left-3 bg-white/85 dark:bg-slate-850/85 backdrop-blur px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-800 text-[10px] text-slate-500 pointer-events-none flex items-center space-x-1 shadow-sm">
+                    <i data-lucide="move" class="w-3 h-3"></i>
+                    <span>ドラッグして移動 / ホイールで拡大縮小</span>
+                </div>
+            </div>
+
+            <!-- エクスポートフッター -->
+            <div class="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex flex-wrap gap-3 items-center justify-between">
+                <!-- オプション項目 -->
+                <div class="flex items-center space-x-4">
+                    <label class="flex items-center space-x-2 text-xs font-medium text-slate-600 dark:text-slate-400 cursor-pointer">
+                        <input type="checkbox" id="transparent-bg" class="rounded text-brand-500 focus:ring-brand-500 dark:bg-slate-800 dark:border-slate-700" checked>
+                        <span>PNG出力時に背景を透過にする</span>
+                    </label>
+                </div>
+
+                <!-- ダウンロードボタン群 -->
+                <div class="flex items-center space-x-2">
+                    <button id="download-svg-btn" onclick="exportSVG()" class="inline-flex items-center space-x-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-lg text-xs font-semibold shadow-sm transition">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>SVGで保存</span>
+                    </button>
+                    <button id="download-png-btn" onclick="exportPNG()" class="inline-flex items-center space-x-1.5 px-4 py-2 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-brand-500/15 transition">
+                        <i data-lucide="image" class="w-4 h-4"></i>
+                        <span>PNGで保存</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- コピー完了通知用トースト -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-10 opacity-0 pointer-events-none bg-slate-900 dark:bg-slate-800 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2.5 text-sm transition-all duration-300">
+        <div class="p-1 bg-brand-500 rounded-lg text-white">
+            <i data-lucide="check" class="w-4 h-4"></i>
+        </div>
+        <span id="toast-message">コピーしました！</span>
+    </div>
+
+    <!-- JavaScript ロジック -->
+    <script>
+        // デフォルトの業務フローテンプレート（完全に稼働する構成）
+        const defaultFlowchart = `graph LR
+%% 1. コスト削減と効率化
+subgraph Cost ["1. コス卜削減と効率化（推進状況の共有化）"]
+    direction TB
+    D1[自治体A] -- 割り勘 --> EL[公共財としての共通基準]
+    D2[自治体B] -- 割り勘 --> EL
+    D3[自治体C] -- 割り勘 --> EL
+end
+
+%% 2. 広域DXと均一化
+subgraph DX ["2. 広域DXの推進とサービス水準の均一化"]
+    direction TB
+    F1[小規模自治体]
+    F1 --> H1[エリアデータ連携基盤]
+    G1[大規模自治体] --> H1
+    H1 --> I1(["[均一化] どこでも同じ水準 of サービス"])
+    H1 --> J1(["[広域DX] 自治体間のデータ連携"])
+end
+
+%% コスト削減から広域DXへの接続
+EL --> F1`;
+
+        // テンプレート定義
+        const templates = {
+            flowchart: defaultFlowchart,
+            sequence: `sequenceDiagram
+    autonumber
+    actor User as 利用者
+    participant App as モバイルアプリ
+    participant API as APIゲートウェイ
+    participant DB as データベース
+
+    User->>App: ログイン要求 (ID, PW入力)
+    App->>API: POST /auth/login
+    activate API
+    API->>DB: ユーザー情報取得
+    activate DB
+    DB-->>API: ハッシュ化パスワード
+    deactivate DB
+    
+    alt 認証成功
+        API-->>App: アクセストークン (JWT)
+        App-->>User: ホーム画面遷移
+    else パスワード不一致
+        API-->>App: 401 Unauthorized
+        App-->>User: エラーメッセージ表示
+    end
+    deactivate API`,
+            class: `classDiagram
+    class User {
+        +String userId
+        +String email
+        +String passwordHash
+        +login()
+        +logout()
+    }
+    class Document {
+        +String docId
+        +String title
+        +String content
+        +Date createdAt
+        +save()
+        +delete()
+    }
+    class ShareSettings {
+        +Boolean isPublic
+        +List allowedUsers
+        +updatePermission()
+    }
+    User "1" --> "0..*" Document : 所有
+    Document "1" *-- "1" ShareSettings : 構成`,
+            gantt: `gantt
+    title システムリプレイス計画
+    dateFormat  YYYY-MM-DD
+    section 要件定義
+    要件整理・ヒアリング     :active, req1, 2026-06-01, 10d
+    基本設計合意            : req2, after req1, 5d
+    section 開発フェーズ
+    DB設計・基盤構築        :crit, dev1, after req2, 7d
+    フロントエンド開発      : dev2, after dev1, 14d
+    バックエンドAPI実装     : dev3, after dev1, 12d
+    section テスト・導入
+    結合テスト              : test1, after dev2, 7d
+    移行リハーサル          : test2, after test1, 3d
+    本番リリース            :milestone, active, 2026-07-10, 0d`,
+            mindmap: `mindmap
+  root((デジタル庁DX))
+    共通化
+      ガバメントクラウド
+      共通API
+      UIデザインシステム
+    効率化
+      マイナンバーカード
+      自治体共通基盤
+      ペーパーレス
+    データ連携
+      エリアデータ連携
+      オープンデータ
+      セキュリティ強靭化`
+        };
+
+        // アプリケーション状態
+        let currentZoom = 1;
+        let isDragging = false;
+        let startX, startY;
+        let panX = 0;
+        let panY = 0;
+        let renderTimeout = null;
+
+        // DOM要素
+        const editor = document.getElementById('editor');
+        const lineNumbers = document.getElementById('line-numbers');
+        const previewContainer = document.getElementById('preview-container');
+        const previewViewport = document.getElementById('preview-viewport');
+        const errorOverlay = document.getElementById('error-overlay');
+        const errorMessage = document.getElementById('error-message');
+        const renderStatus = document.getElementById('render-status');
+        const templateBtn = document.getElementById('template-btn');
+        const templateMenu = document.getElementById('template-menu');
+        const themeToggle = document.getElementById('theme-toggle');
+
+        // 安全な初期化関数
+        function initializeAppSafe() {
+            if (typeof mermaid !== 'undefined') {
+                mermaid.initialize({
+                    startOnLoad: false,
+                    theme: document.documentElement.classList.contains('dark') ? 'dark' : 'default',
+                    securityLevel: 'loose',
+                    flowchart: { useMaxWidth: false, htmlLabels: true },
+                    sequence: { useMaxWidth: false },
+                    gantt: { useMaxWidth: false }
+                });
+
+                // 【修正：最重要】新規立ち上げ・ロード時は常に空文字でスタートする
+                editor.value = '';
+
+                updateLineNumbers();
+                updateStats();
+                
+                // マイリスト一覧を表示
+                renderMyList();
+
+                // 描画を実行（エディタが空のため何も表示されない状態になる）
+                renderDiagram(true);
+
+                // ResizeObserverを使ってプレビュー表示領域のサイズ変化を監視
+                const resizeObserver = new ResizeObserver(() => {
+                    fitDiagramToViewport();
+                });
+                resizeObserver.observe(previewViewport);
+
+            } else {
+                setTimeout(initializeAppSafe, 100);
+            }
+        }
+
+        // 初期ロードイベント
+        window.addEventListener('load', () => {
+            lucide.createIcons();
+            initializeAppSafe();
+
+            // 入力監視
+            editor.addEventListener('input', () => {
+                updateLineNumbers();
+                updateStats();
+                
+                clearTimeout(renderTimeout);
+                renderTimeout = setTimeout(() => {
+                    renderDiagram();
+                }, 300);
+            });
+
+            // 行スクロールの同期
+            editor.addEventListener('scroll', () => {
+                lineNumbers.scrollTop = editor.scrollTop;
+            });
+
+            setupTheme();
+
+            // テンプレート選択
+            templateBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                templateMenu.classList.toggle('hidden');
+            });
+            document.addEventListener('click', () => {
+                templateMenu.classList.add('hidden');
+            });
+
+            setupDragAndZoom();
+        });
+
+        // テーマ切替
+        function setupTheme() {
+            if (localStorage.getItem('theme') === 'dark' || 
+                (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+
+            themeToggle.addEventListener('click', () => {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('theme', 'light');
+                    reinitMermaidTheme('default');
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('theme', 'dark');
+                    reinitMermaidTheme('dark');
+                }
+            });
+        }
+
+        function reinitMermaidTheme(themeName) {
+            if (typeof mermaid !== 'undefined') {
+                mermaid.initialize({
+                    startOnLoad: false,
+                    theme: themeName,
+                    securityLevel: 'loose',
+                    flowchart: { useMaxWidth: false, htmlLabels: true },
+                    sequence: { useMaxWidth: false },
+                    gantt: { useMaxWidth: false }
+                });
+                renderDiagram(true);
+            }
+        }
+
+        // 行番号の動的生成
+        function updateLineNumbers() {
+            const lines = editor.value.split('\n');
+            const lineCount = Math.max(lines.length, 1);
+            let numbersHtml = '';
+            for (let i = 1; i <= lineCount; i++) {
+                numbersHtml += `<div>${i}</div>`;
+            }
+            lineNumbers.innerHTML = numbersHtml;
+            lineNumbers.scrollTop = editor.scrollTop;
+        }
+
+        // 統計更新
+        function updateStats() {
+            const lines = editor.value.split('\n').length;
+            const chars = editor.value.length;
+            document.getElementById('editor-stats').textContent = `行: ${lines} | 文字数: ${chars}`;
+        }
+
+        // Mermaidレンダリングメイン処理
+        async function renderDiagram(forceAutoFit = false) {
+            const code = editor.value.trim();
+            localStorage.setItem('mermaid_code', editor.value);
+
+            if (!code) {
+                previewContainer.innerHTML = ''; // 何も描画しない
+                hideError();
+                return;
+            }
+
+            if (typeof mermaid === 'undefined') return;
+
+            try {
+                // 構文パースチェック
+                await mermaid.parse(code);
+
+                // レンダリング用のユニークなID
+                const id = 'mermaid-svg-' + Math.random().toString(36).substring(2, 9);
+                
+                // レンダリング処理
+                const { svg } = await mermaid.render(id, code);
+                
+                // コンテナに描画
+                previewContainer.innerHTML = svg;
+                
+                // SVG本来のアスペクト比とサイズを保証するスタイル最適化
+                adjustSvgStyles();
+
+                hideError();
+                setRenderStatus(true);
+
+                // 初回読み込みやロード時に自動フィットさせる
+                if (forceAutoFit) {
+                    setTimeout(fitDiagramToViewport, 50);
+                }
+            } catch (err) {
+                console.error(err);
+                showError(err.message || '描画中にエラーが発生しました。構文を確認してください。');
+                setRenderStatus(false);
+            }
+        }
+
+        // SVG本来の描画サイズがCSSのauto指定などで潰れないように、親コンテナサイズを完全同期する
+        function adjustSvgStyles() {
+            const svgElement = previewContainer.querySelector('svg');
+            if (svgElement) {
+                // viewBox属性から本来のサイズ情報を取得
+                let viewBox = svgElement.getAttribute('viewBox');
+                
+                // もしviewBoxがなければ、width/heightから無理やり作る
+                if (!viewBox) {
+                    const w = svgElement.getAttribute('width') || "800";
+                    const h = svgElement.getAttribute('height') || "600";
+                    viewBox = `0 0 ${w.replace('px', '')} ${h.replace('px', '')}`;
+                    svgElement.setAttribute('viewBox', viewBox);
+                }
+
+                // カンマとスペースの両方を確実にパースできるように正規表現(/[ ,]+/)を採用
+                const parts = viewBox.split(/[ ,]+/);
+                if (parts.length === 4) {
+                    const vbWidth = parseFloat(parts[2]);
+                    const vbHeight = parseFloat(parts[3]);
+                    
+                    // SVG自体は親コンテナのサイズに完全に追従させる
+                    svgElement.style.width = '100%';
+                    svgElement.style.height = '100%';
+                    svgElement.style.maxWidth = 'none';
+                    svgElement.style.maxHeight = 'none';
+
+                    // 親コンテナ（preview-container）に、図の「本来の実寸ピクセル」を設定
+                    previewContainer.style.width = vbWidth + 'px';
+                    previewContainer.style.height = vbHeight + 'px';
+                }
+                svgElement.style.display = 'block';
+            }
+        }
+
+        // プレビュー領域に図をジャストフィットさせる
+        function fitDiagramToViewport() {
+            const svgElement = previewContainer.querySelector('svg');
+            if (!svgElement) return;
+
+            const viewportWidth = previewViewport.clientWidth;
+            const viewportHeight = previewViewport.clientHeight;
+            
+            // 親コンテナ（図の実寸）の幅・高さを基準にする
+            const svgWidth = parseFloat(previewContainer.style.width) || 800;
+            const svgHeight = parseFloat(previewContainer.style.height) || 600;
+
+            // 描画サイズがまだ確定していない場合（0以下の異常値時）はフィット処理を行わずスキップ
+            if (viewportWidth < 100 || viewportHeight < 100) {
+                currentZoom = 1;
+                panX = 0;
+                panY = 0;
+                applyTransform();
+                return;
+            }
+
+            // ビューポートに収まるようにスケールを逆算
+            const widthScale = (viewportWidth - 40) / svgWidth;
+            const heightScale = (viewportHeight - 40) / svgHeight;
+            let targetScale = Math.min(widthScale, heightScale, 1.2); // 最大でも1.2倍に制限
+
+            if (targetScale <= 0 || isNaN(targetScale)) targetScale = 1;
+
+            currentZoom = targetScale;
+            
+            // 中央配置位置の計算 (panをリセット)
+            panX = 0;
+            panY = 0;
+
+            applyTransform();
+        }
+
+        // エラー表示
+        function showError(msg) {
+            errorMessage.textContent = msg;
+            errorOverlay.classList.remove('hidden');
+        }
+
+        function hideError() {
+            errorOverlay.classList.add('hidden');
+        }
+
+        function setRenderStatus(success) {
+            if (success) {
+                renderStatus.innerHTML = `<i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i><span>正常</span>`;
+                renderStatus.className = "flex items-center space-x-1 text-emerald-500 font-medium";
+            } else {
+                renderStatus.innerHTML = `<i data-lucide="x-circle" class="w-3.5 h-3.5"></i><span>エラー</span>`;
+                renderStatus.className = "flex items-center space-x-1 text-red-500 font-medium";
+            }
+            lucide.createIcons();
+        }
+
+        // テンプレート読み込み
+        function loadTemplate(type) {
+            if (templates[type]) {
+                editor.value = templates[type];
+                updateLineNumbers();
+                updateStats();
+                renderDiagram(true);
+                showToast("テンプレートを適用しました");
+            }
+        }
+
+        // コピー機能
+        function copyToClipboard() {
+            const code = editor.value;
+            if (!code) return;
+
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(code).then(() => {
+                    showToast("コードをクリップボードにコピーしました！");
+                }).catch(() => {
+                    fallbackCopyText(code);
+                });
+            } else {
+                fallbackCopyText(code);
+            }
+        }
+
+        function fallbackCopyText(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast("コードをクリップボードにコピーしました！");
+            } catch (err) {
+                showToast("コピーに失敗しました。");
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // エディタのクリア
+        function clearEditor() {
+            editor.value = '';
+            updateLineNumbers();
+            updateStats();
+            previewContainer.innerHTML = '';
+            hideError();
+            setRenderStatus(true);
+        }
+
+        // ドラッグ＆ズーム
+        function setupDragAndZoom() {
+            previewViewport.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomFactor = 1.08;
+                if (e.deltaY < 0) {
+                    currentZoom = Math.min(currentZoom * zoomFactor, 6);
+                } else {
+                    currentZoom = Math.max(currentZoom / zoomFactor, 0.15);
+                }
+                applyTransform();
+            }, { passive: false });
+
+            previewViewport.addEventListener('mousedown', (e) => {
+                if (e.button !== 0) return;
+                isDragging = true;
+                startX = e.clientX - panX;
+                startY = e.clientY - panY;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                panX = e.clientX - startX;
+                panY = e.clientY - startY;
+                applyTransform();
+            });
+
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            // タッチイベント対応
+            previewViewport.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    startX = e.touches[0].clientX - panX;
+                    startY = e.touches[0].clientY - panY;
+                }
+            });
+
+            previewViewport.addEventListener('touchmove', (e) => {
+                if (!isDragging || e.touches.length !== 1) return;
+                panX = e.touches[0].clientX - startX;
+                panY = e.touches[0].clientY - startY;
+                applyTransform();
+            });
+
+            previewViewport.addEventListener('touchend', () => {
+                isDragging = false;
+            });
+        }
+
+        function applyTransform() {
+            previewContainer.style.transform = `translate(${panX}px, ${panY}px) scale(${currentZoom})`;
+            document.getElementById('zoom-level').textContent = `${Math.round(currentZoom * 100)}%`;
+        }
+
+        function adjustZoom(factor) {
+            currentZoom = Math.min(Math.max(currentZoom * factor, 0.15), 6);
+            applyTransform();
+        }
+
+        function resetZoom() {
+            fitDiagramToViewport();
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = message;
+            toast.className = "fixed bottom-6 right-6 z-50 transform translate-y-0 opacity-100 bg-slate-950 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2.5 text-sm transition-all duration-300";
+            
+            setTimeout(() => {
+                toast.className = "fixed bottom-6 right-6 z-50 transform translate-y-10 opacity-0 pointer-events-none bg-slate-950 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2.5 text-sm transition-all duration-300";
+            }, 3000);
+        }
+
+        // ==========================================
+        //  マイリスト保存・管理ロジック
+        // ==========================================
+        
+        // ローカルストレージから保存データリストを取得
+        function getMyList() {
+            const listStr = localStorage.getItem('mermaid_mylist');
+            return listStr ? JSON.parse(listStr) : {};
+        }
+
+        // リストへの保存
+        function saveToMyList() {
+            const nameInput = document.getElementById('save-name-input');
+            const name = nameInput.value.trim();
+            const code = editor.value;
+
+            if (!name) {
+                showToast("保存する名前を入力してください。");
+                return;
+            }
+            if (!code.trim()) {
+                showToast("保存する図表データ（コード）がありません。");
+                return;
+            }
+
+            const currentList = getMyList();
+            currentList[name] = code;
+            localStorage.setItem('mermaid_mylist', JSON.stringify(currentList));
+            
+            nameInput.value = ''; // 入力欄をリセット
+            renderMyList();
+            showToast(`「${name}」をマイリストに保存したよ！`);
+        }
+
+        // リストアイテムの読み込み
+        function loadFromMyList(name) {
+            const currentList = getMyList();
+            if (currentList[name]) {
+                editor.value = currentList[name];
+                updateLineNumbers();
+                updateStats();
+                renderDiagram(true);
+                showToast(`「${name}」を読み込んだよ！`);
+            }
+        }
+
+        // リストアイテムの削除
+        function deleteFromMyList(e, name) {
+            e.stopPropagation(); // バッジクリックイベントが親ボタンに伝播するのを防止
+            
+            const currentList = getMyList();
+            if (currentList[name]) {
+                delete currentList[name];
+                localStorage.setItem('mermaid_mylist', JSON.stringify(currentList));
+                renderMyList();
+                showToast(`「${name}」を削除したよ！`);
+            }
+        }
+
+        // マイリスト一覧の描画
+        function renderMyList() {
+            const container = document.getElementById('mylist-container');
+            const list = getMyList();
+            const keys = Object.keys(list);
+
+            if (keys.length === 0) {
+                container.innerHTML = `<span class="text-xs text-slate-400 italic">保存された図表はまだありません</span>`;
+                return;
+            }
+
+            container.innerHTML = keys.map(key => `
+                <div onclick="loadFromMyList('${key}')" class="group flex items-center gap-1.5 px-3 py-1 bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/30 dark:hover:bg-brand-950/60 border border-brand-100 dark:border-brand-900/60 text-brand-700 dark:text-brand-300 rounded-full text-xs font-medium cursor-pointer transition">
+                    <span>${key}</span>
+                    <button onclick="deleteFromMyList(event, '${key}')" class="text-brand-400 hover:text-red-500 rounded-full hover:bg-white dark:hover:bg-slate-900 p-0.5 transition" title="この保存データを削除">
+                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+            `).join('');
+
+            // 動的に追加したアイコンの有効化
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        //  ファイル保存（エクスポート/インポート）
+        // ==========================================
+
+        // .mermaid ファイルとしてローカル保存
+        function exportMermaidFile() {
+            const code = editor.value;
+            if (!code.trim()) {
+                showToast("保存するコードがありません。");
+                return;
+            }
+
+            const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `diagram-${Date.now()}.mermaid`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showToast("ファイルをローカルに保存したよ！");
+        }
+
+        // 手元の .mermaid/.txt ファイルを読み込む
+        function importMermaidFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                editor.value = e.target.result;
+                updateLineNumbers();
+                updateStats();
+                renderDiagram(true);
+                showToast("ファイルからコードをインポートしたよ！");
+            };
+            reader.readAsText(file);
+            
+            // inputの選択内容をリセット
+            event.target.value = '';
+        }
+
+        // SVG エクスポート処理
+        function exportSVG() {
+            const svgElement = previewContainer.querySelector('svg');
+            if (!svgElement) {
+                showToast("出力する図表が存在しません。");
+                return;
+            }
+
+            try {
+                const clone = svgElement.cloneNode(true);
+                clone.removeAttribute('style');
+                clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                
+                const serializer = new XMLSerializer();
+                let svgString = serializer.serializeToString(clone);
+                
+                const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `mermaid-${Date.now()}.svg`;
+                document.body.appendChild(link);
+                link.click();
+                
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                showToast("SVGファイルをダウンロードしたよ！");
+            } catch (err) {
+                console.error(err);
+                showToast("SVGの出力に失敗しました。");
+            }
+        }
+
+        // PNG エクスポート処理 (2倍スケール高画質出力)
+        function exportPNG() {
+            const svgElement = previewContainer.querySelector('svg');
+            if (!svgElement) {
+                showToast("出力する図表が存在しません。");
+                return;
+            }
+
+            try {
+                const isTransparent = document.getElementById('transparent-bg').checked;
+                const rect = svgElement.getBoundingClientRect();
+                const width = rect.width || parseFloat(svgElement.getAttribute('width')) || 800;
+                const height = rect.height || parseFloat(svgElement.getAttribute('height')) || 600;
+
+                const scale = 2.0; // 2倍高画質レンダリング
+                const canvasWidth = width * scale;
+                const canvasHeight = height * scale;
+
+                const clone = svgElement.cloneNode(true);
+                clone.setAttribute('width', canvasWidth);
+                clone.setAttribute('height', canvasHeight);
+                clone.style.width = canvasWidth + 'px';
+                clone.style.height = canvasHeight + 'px';
+
+                const serializer = new XMLSerializer();
+                const svgString = serializer.serializeToString(clone);
+                
+                const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = canvasWidth;
+                    canvas.height = canvasHeight;
+                    const ctx = canvas.getContext('2d');
+
+                    if (!isTransparent) {
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+                    }
+
+                    ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+                    
+                    try {
+                        const pngDataUrl = canvas.toDataURL('image/png');
+                        const link = document.createElement('a');
+                        link.href = pngDataUrl;
+                        link.download = `mermaid-${Date.now()}.png`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        showToast("PNGファイルをダウンロードしたよ！");
+                    } catch (canvasErr) {
+                        console.error(canvasErr);
+                        showToast("セキュアな環境制限のためPNG出力に失敗しました。");
+                    }
+                    URL.revokeObjectURL(url);
+                };
+                
+                img.onerror = () => {
+                    showToast("画像の生成プロセスでエラーが発生しました。");
+                    URL.revokeObjectURL(url);
+                };
+
+                img.src = url;
+
+            } catch (err) {
+                console.error(err);
+                showToast("PNGの出力に失敗しました。");
+            }
+        }
+    </script>
+</body>
+</html>
