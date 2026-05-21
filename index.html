@@ -959,9 +959,25 @@ EL --> F1`;
                 if (!isTransparent) {
                     // SVG規格（XML名前空間）に基づいてrect要素（矩形）を新規生成
                     const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-                    rect.setAttribute("width", "100%");
-                    rect.setAttribute("height", "100%");
                     rect.setAttribute("fill", "#FFFFFF");
+                    
+                    // 【バグ修正】viewBox の正確な座標を解析して配置する
+                    const viewBox = clone.getAttribute('viewBox');
+                    if (viewBox) {
+                        const parts = viewBox.split(/[ ,]+/);
+                        if (parts.length === 4) {
+                            rect.setAttribute("x", parts[0]);
+                            rect.setAttribute("y", parts[1]);
+                            rect.setAttribute("width", parts[2]);
+                            rect.setAttribute("height", parts[3]);
+                        } else {
+                            rect.setAttribute("width", "100%");
+                            rect.setAttribute("height", "100%");
+                        }
+                    } else {
+                        rect.setAttribute("width", "100%");
+                        rect.setAttribute("height", "100%");
+                    }
                     
                     // クローンしたSVGコードの最下層（一番最初の子要素）に滑り込ませて白背景を形成する
                     clone.insertBefore(rect, clone.firstChild);
@@ -988,7 +1004,7 @@ EL --> F1`;
             }
         }
 
-        // PNG エクスポート処理 (2倍スケール高画質出力、セキュリティ汚染対策済)
+        // PNG エクスポート処理 (2倍スケール高画質出力、セキュリティ汚染対策・背景隙間対策済)
         function exportPNG() {
             const svgElement = previewContainer.querySelector('svg');
             if (!svgElement) {
@@ -1012,12 +1028,35 @@ EL --> F1`;
                 clone.style.width = canvasWidth + 'px';
                 clone.style.height = canvasHeight + 'px';
 
+                // 【バグ修正】PNG出力用のクローンSVG自体にも正確な座標で白背景を仕込み、
+                // Canvas描画時に隅に発生する余白・クリッピングの隙間を確実にカバー
+                if (!isTransparent) {
+                    const bgRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                    bgRect.setAttribute("fill", "#FFFFFF");
+                    const viewBox = clone.getAttribute('viewBox');
+                    if (viewBox) {
+                        const parts = viewBox.split(/[ ,]+/);
+                        if (parts.length === 4) {
+                            bgRect.setAttribute("x", parts[0]);
+                            bgRect.setAttribute("y", parts[1]);
+                            bgRect.setAttribute("width", parts[2]);
+                            bgRect.setAttribute("height", parts[3]);
+                        } else {
+                            bgRect.setAttribute("width", "100%");
+                            bgRect.setAttribute("height", "100%");
+                        }
+                    } else {
+                        bgRect.setAttribute("width", "100%");
+                        bgRect.setAttribute("height", "100%");
+                    }
+                    clone.insertBefore(bgRect, clone.firstChild);
+                }
+
                 const serializer = new XMLSerializer();
                 let svgString = serializer.serializeToString(clone);
                 
                 // 【セキュリティ汚染対策①】
                 // SVG内のスタイル定義で、外部のWebフォントなどをロードしている定義（@import や @font-face）を完全に除去
-                // これによりCanvasの画像レンダリング時に別ドメインへの非同期リクエストが発生しなくなり、キャンバスの汚染（Tainted）を防ぎます。
                 svgString = svgString.replace(/@import\s+url\([^)]+\);?/g, '');
                 svgString = svgString.replace(/@font-face\s*{[^}]+}/g, '');
 
